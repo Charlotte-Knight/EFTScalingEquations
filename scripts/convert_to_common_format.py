@@ -25,7 +25,7 @@ def getCoefficients(eqns):
         cs.remove("2")
       coefficients.update(cs)
 
-  return list(coefficients)
+  return sorted(list(coefficients))
 
 def createDataBlock(coefficients, n_obserables):
   block = {}
@@ -132,8 +132,8 @@ print(prod_eqns.keys())
 print(stage0)
 
 extra_metadata = {
-  "author": "Matthew Knight",
-  "contact": "matthew.knight@cern.ch",
+  "author": "Charlotte Knight",
+  "contact": "charlotte.knight@cern.ch",
   "date [DD/MM/YY]": "22/06/2023",
   "description": "",
   "documentation": ["https://github.com/MatthewDKnight/EFT2Obs/tree/Run2Legacy/cards"],
@@ -157,24 +157,32 @@ extra_metadata = {
   "method" : "reweighting"
 }
 
+with open("sm_xs.json", "r") as f:
+  sm_xs = json.load(f)
+
 for stage0_proc in stage0:
   prod_skeleton = getSkeleton({key:prod_eqns[key] for key in prod_eqns if key.split("_")[0] == stage0_proc})
   prod_skeleton["metadata"].update(copy.deepcopy(extra_metadata))
   prod_skeleton["metadata"]["PDF"] = "NNPDF31_nnlo_hessian_pdfas [306000]"
+  prod_skeleton["metadata"]["collisions"] = "pp"
+  prod_skeleton["metadata"]["sqrts"] = "13 TeV"
 
   if stage0_proc in ["GG2H", "GG2HLL"]:
     prod_skeleton["metadata"]["UFO"] = "SMEFTatNLO"
     prod_skeleton["metadata"]["flavor_scheme"] = "SMEFTatNLO"
   if stage0_proc == "GG2H":
-    prod_skeleton["scale_choice"] = "125 GeV"
+    prod_skeleton["metadata"]["scale_choice"] = "125 GeV"
   elif stage0_proc == "GG2HLL":
-    prod_skeleton["scale_choice"] = "108 GeV"
+    prod_skeleton["metadata"]["scale_choice"] = "108 GeV"
+
+  sm_xs_proc = [sm_xs[observable_name] if observable_name in sm_xs else 0 for observable_name in prod_skeleton["metadata"]["observable_names"]]
+  if 0 in sm_xs_proc:
+    print("Warning: 0 in sm_xs")
+  prod_skeleton["data"]["sm_xs"] = sm_xs_proc
 
   json_str = json.dumps(prod_skeleton, indent=1, cls=NumpyEncoder)
   with open(os.path.join(outdir, f"{stage0_proc}.json"), "w") as f:
     f.write(removeIndentInLists(json_str))
-
-
 
 for key in decay_eqns:
   prod_skeleton = getSkeleton({key:decay_eqns[key]})
@@ -195,6 +203,6 @@ for key in decay_eqns:
     prod_skeleton["metadata"]["method"] = "reweighting/direct"
 
   json_str = json.dumps(prod_skeleton, indent=1, cls=NumpyEncoder)
-  with open(os.path.join(outdir, f"{key}.json"), "w") as f:
+  with open(os.path.join(outdir, f"H_{key}.json"), "w") as f:
     f.write(removeIndentInLists(json_str))
 
