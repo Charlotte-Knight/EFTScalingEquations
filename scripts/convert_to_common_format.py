@@ -19,7 +19,8 @@ def getCoefficients(eqns):
   coefficients = set()
   for name, eqn in eqns.items():
     for key in eqn.keys():
-      key = key.replace("u_", "")
+      if key[:2] == "u_":
+        key = key[2:]
       cs = key.split("_")[1:]
       if "2" in cs:
         cs.remove("2")
